@@ -13,9 +13,7 @@ function Promise(fn) {
   // store sucess & failure handlers
   var handlers = []
 
-  function fulfill(result) {
-    state = FULFILLED
-    value = result
+  function handleHandlers() {
     setTimeout(function () {
       for (let index = 0; index < handlers.length; index++) {
         var handler = handlers[index]
@@ -25,16 +23,18 @@ function Promise(fn) {
     }, 0)
   }
 
+  function fulfill(result) {
+    if (state !== PENDING) return
+    state = FULFILLED
+    value = result
+    handleHandlers()
+  }
+
   function reject(error) {
+    if (state !== PENDING) return
     state = REJECTED
     value = error
-    setTimeout(function () {
-      for (let index = 0; index < handlers.length; index++) {
-        var handler = handlers[index]
-        handle(handler)
-      }
-      handlers = null
-    }, 0)
+    handleHandlers()
   }
 
   function resolve(result) {
@@ -42,11 +42,32 @@ function Promise(fn) {
       if (result === self) {
         throw new TypeError('A promise cannot be resolved with itself.')
       }
-      var then = getThen(result)
-      if (then) {
-        doResolve(then.bind(result), resolve, reject)
-        return
+
+      var resultType = typeof result
+      if (result && (resultType === 'object' || resultType === 'function')) {
+        var then = result.then //because x.then could be a getter
+        if (typeof then === 'function') {
+
+          var done = false
+          try {
+            then.call(result, function (value) {
+              if (done) return
+              done = true
+              resolve(value)
+            }, function (reason) {
+              if (done) return
+              done = true
+              reject(reason)
+            })
+          } catch (ex) {
+            if (done) return
+            done = true
+            reject(ex)
+          }
+          return
+        }
       }
+
       fulfill(result)
     } catch (e) {
       reject(e)
@@ -77,95 +98,52 @@ function Promise(fn) {
     })
   }
 
-  this.then = function (onFulfilled, onRejected) {
-    var self = this
-    return new Promise(function (resolve, reject) {
-      return self.done(function (result) {
-        if (typeof onFulfilled === 'function') {
-          try {
-            return resolve(onFulfilled(result))
-          } catch (ex) {
-            return reject(ex)
-          }
-        } else {
-          return resolve(result)
-        }
-      }, function (error) {
-        if (typeof onRejected === 'function') {
-          try {
-            return resolve(onRejected(error))
-          } catch (ex) {
-            return reject(ex)
-          }
-        } else {
-          return reject(error)
-        }
-      })
-    })
-  }
-
-  doResolve(fn, resolve, reject)
-}
-
-/**
- * Check if a value is a Promise and, if it is,
- * return the `then` method of that promise.
- *
- * @param {Promise|Any} value
- * @return {Function|Null}
- */
-function getThen(value) {
-  var t = typeof value
-  if (value && (t === 'object' || t === 'function')) {
-    var then = value.then
-    if (typeof then === 'function') {
-      return then
-    }
-  }
-  return null
-}
-
-/**
- * Take a potentially misbehaving resolver function and make sure
- * onFulfilled and onRejected are only called once.
- *
- * Makes no guarantees about asynchrony.
- *
- * @param {Function} fn A resolver function that may not be trusted
- * @param {Function} onFulfilled
- * @param {Function} onRejected
- */
-function doResolve(fn, onFulfilled, onRejected) {
-  var done = false
   try {
-    fn(function (value) {
-      if (done) return
-      done = true
-      onFulfilled(value)
-    }, function (reason) {
-      if (done) return
-      done = true
-      onRejected(reason)
-    })
-  } catch (ex) {
-    if (done) return
-    done = true
-    onRejected(ex)
+    fn(resolve, reject)
+  } catch (reason) {
+    reject(reason)
   }
 }
 
-Promise.resolve = function(value) {
+Promise.prototype.then = function (onFulfilled, onRejected) {
+  var self = this
+  return new Promise(function (resolve, reject) {
+    return self.done(function (result) {
+      if (typeof onFulfilled === 'function') {
+        try {
+          return resolve(onFulfilled(result))
+        } catch (ex) {
+          return reject(ex)
+        }
+      } else {
+        return resolve(result)
+      }
+    }, function (error) {
+      if (typeof onRejected === 'function') {
+        try {
+          return resolve(onRejected(error))
+        } catch (ex) {
+          return reject(ex)
+        }
+      } else {
+        return reject(error)
+      }
+    })
+  })
+}
+
+Promise.resolve = function (value) {
   if (value && typeof value === 'object' && value.constructor === Promise) {
     return value
   }
 
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     resolve(value)
   })
 }
 
-Promise.reject = function(value) {
-  return new Promise(function(resolve, reject) {
+Promise.reject = function (value) {
+  return new Promise(function (resolve, reject) {
     reject(value)
   })
 }

@@ -1,0 +1,24 @@
+{
+  "name": "promises",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/index.js --reporter mochawesome"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lq111lq/Promises.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lq111lq/Promises/issues"
+  },
+  "homepage": "https://github.com/lq111lq/Promises#readme",
+  "devDependencies": {
+    "mocha": "^6.0.0",
+    "mochawesome": "^3.1.1",
+    "promises-aplus-tests": "^2.1.2"
+  }
+}

@@ -45,7 +45,7 @@ function Promise(fn) {
 
       var resultType = typeof result
       if (result && (resultType === 'object' || resultType === 'function')) {
-        var then = result.then //because x.then could be a getter
+        var then = result.then //because x.then could be a getter 下文的 then.call 也是如此
         if (typeof then === 'function') {
 
           var done = false
@@ -149,3 +149,22 @@ Promise.reject = function (value) {
 }
 
 module.exports = Promise
+
+
+function xFactory() {
+  return Object.create(null, {
+      then: {
+          get: function () {
+              return function thenMethodForX(onFulfilled) {
+                  onFulfilled()
+              }
+          }
+      }
+  })
+}
+
+var dummy = { dummy: "dummy" }
+
+var promise = Promise.resolved(dummy).then(function onBasePromiseFulfilled() {
+  return xFactory();
+});

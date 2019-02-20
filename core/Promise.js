@@ -149,22 +149,3 @@ Promise.reject = function (value) {
 }
 
 module.exports = Promise
-
-
-function xFactory() {
-  return Object.create(null, {
-      then: {
-          get: function () {
-              return function thenMethodForX(onFulfilled) {
-                  onFulfilled()
-              }
-          }
-      }
-  })
-}
-
-var dummy = { dummy: "dummy" }
-
-var promise = Promise.resolved(dummy).then(function onBasePromiseFulfilled() {
-  return xFactory();
-});
